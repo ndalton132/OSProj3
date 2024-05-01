@@ -10,6 +10,9 @@ int buffer_index = 0;
 int message_index = 0;
 int message_length = 0;
 int producer_finished = 0;
+int front_queue = 1;
+int back_queue = 0;
+
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t full_condition = PTHREAD_COND_INITIALIZER;
 pthread_cond_t empty_condition = PTHREAD_COND_INITIALIZER;
@@ -85,9 +88,10 @@ void* consumer(void* arg) {
 	}
 	
         /* Print the character from the circular buffer */
-        printf("%c", circular_buffer[(buffer_index - 1 + BUFFER_SIZE) % BUFFER_SIZE]);
+	/*printf("Buufer index %i- %i", BUFFER_SIZE, buffer_index-1);*/
+        printf("%c", circular_buffer[(BUFFER_SIZE -1) - buffer_index]);
         buffer_index = (buffer_index - 1 + BUFFER_SIZE) % BUFFER_SIZE;
-	
+	front_queue++;
 	
         /* Signal that the buffer is not full */
         pthread_cond_signal(&full_condition);
