@@ -9,6 +9,7 @@ char circular_buffer[BUFFER_SIZE];
 int buffer_index = 0;
 int message_index = 0;
 int message_length = 0;
+int producer_finished = 0;
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t full_condition = PTHREAD_COND_INITIALIZER;
 pthread_cond_t empty_condition = PTHREAD_COND_INITIALIZER;
@@ -30,15 +31,25 @@ void* producer(void* arg) {
         pthread_mutex_lock(&mutex);
 
         /* Wait while the buffer is full */
-        while (buffer_index == BUFFER_SIZE) {
+	/*printf("Buffer index: %i , buffer size: %i\n\n", buffer_index, BUFFER_SIZE);*/
+        while (buffer_index  == BUFFER_SIZE - 1) {
             pthread_cond_wait(&full_condition, &mutex);
+	    
         }
 
         /* Add character to the circular buffer */
         circular_buffer[buffer_index] = ch;
+	
+	/*printf("Message in producer: ");
+	for(int i = 0; i <= 11; i++){
+		printf("%c",circular_buffer[i]);
+	}
+	printf("\n\n");*/
         buffer_index = (buffer_index + 1) % BUFFER_SIZE;
-        message_index++;
+       
         message_length++;
+	
+	pthread_cond_signal(&full_condition);
 
         /* Signal that the buffer is not empty */
         pthread_cond_signal(&empty_condition);
@@ -57,19 +68,27 @@ void* producer(void* arg) {
 /* Consumer thread function */
 void* consumer(void* arg) {
     /* Continue consuming until all messages are processed */
-    while (message_index < message_length) {
+    /*printf("Message_index: %i, message_length: %i", message_index, message_length);*/
+    while (1) {
         /* Acquire the mutex lock */
         pthread_mutex_lock(&mutex);
-
+	
         /* Wait while the buffer is empty */
-        while (buffer_index == 0) {
+        while (buffer_index == 0 && !producer_finished) {
             pthread_cond_wait(&empty_condition, &mutex);
+	    
         }
 
+	if (buffer_index == 0 && producer_finished){
+		pthread_mutex_unlock(&mutex);
+		break;
+	}
+	
         /* Print the character from the circular buffer */
         printf("%c", circular_buffer[(buffer_index - 1 + BUFFER_SIZE) % BUFFER_SIZE]);
         buffer_index = (buffer_index - 1 + BUFFER_SIZE) % BUFFER_SIZE;
-
+	
+	
         /* Signal that the buffer is not full */
         pthread_cond_signal(&full_condition);
 
